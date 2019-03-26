@@ -1,4 +1,4 @@
-package workshop
+package pipe
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func Test_WorkShop(t *testing.T) {
 	}
 	time.Sleep(10 * time.Second)
 	pip.Close()
-	fmt.Printf("pipe close success\n")
+	fmt.Printf("Pipe close success\n")
 	for {
 	}
 }

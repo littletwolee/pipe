@@ -1,17 +1,17 @@
-package workshop
+package pipe
 
 import (
 	"sync"
 )
 
-type pipe struct {
+type Pipe struct {
 	pip  *pip
 	stop chan bool
 	jobs *jobs
 }
 
-func NewPipe(chNum int) *pipe {
-	return &pipe{
+func NewPipe(chNum int) *Pipe {
+	return &Pipe{
 		pip:  newPip(chNum),
 		stop: make(chan bool),
 		jobs: &jobs{
@@ -20,11 +20,11 @@ func NewPipe(chNum int) *pipe {
 	}
 }
 
-func (p *pipe) AddJobs(jobs ...Job) {
+func (p *Pipe) AddJobs(jobs ...Job) {
 	p.jobs.push(jobs...)
 }
 
-func (p *pipe) Start(objs ...interface{}) {
+func (p *Pipe) Start(objs ...interface{}) {
 	var obj interface{}
 	if len(objs) > 0 {
 		obj = objs[0]
@@ -58,7 +58,7 @@ func (p *pipe) Start(objs ...interface{}) {
 		}
 	}
 }
-func (p *pipe) Close() {
+func (p *Pipe) Close() {
 	p.stop <- true
 	p.pip.stopCH <- true
 	close(p.stop)
