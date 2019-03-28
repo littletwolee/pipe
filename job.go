@@ -25,17 +25,16 @@ func (js *jobs) pop() Job {
 	return job
 }
 
-func (js *jobs) push(jobs ...Job) {
-	js.m.Lock()
-	defer js.m.Unlock()
-	js.list = append(js.list, jobs...)
-}
-
 func (js *jobs) len() int {
 	js.m.Lock()
 	defer js.m.Unlock()
 	return len(js.list)
+}
 
+func (js *jobs) push(jobs ...Job) {
+	js.m.Lock()
+	defer js.m.Unlock()
+	js.list = append(js.list, jobs...)
 }
 
 type e int

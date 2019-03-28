@@ -24,6 +24,10 @@ func (p *Pipe) AddJobs(jobs ...Job) {
 	p.jobs.push(jobs...)
 }
 
+func (p *Pipe) Len() int {
+	return p.jobs.len()
+}
+
 func (p *Pipe) Start(objs ...interface{}) {
 	var obj interface{}
 	if len(objs) > 0 {
