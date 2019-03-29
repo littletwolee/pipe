@@ -62,7 +62,9 @@ func (p *Pipe) Start(objs ...interface{}) {
 		}
 	}
 }
+
 func (p *Pipe) Close() {
+	p.jobs.clean()
 	p.stop <- true
 	p.pip.stopCH <- true
 	close(p.stop)

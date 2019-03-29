@@ -31,6 +31,12 @@ func (js *jobs) len() int {
 	return len(js.list)
 }
 
+func (js *jobs) clean() {
+	js.m.Lock()
+	defer js.m.Unlock()
+	js.list = []Job{}
+}
+
 func (js *jobs) push(jobs ...Job) {
 	js.m.Lock()
 	defer js.m.Unlock()
