@@ -28,6 +28,10 @@ func (p *Pipe) Len() int {
 	return p.jobs.len()
 }
 
+func (p *Pipe) Clean() {
+	p.jobs.clean()
+}
+
 func (p *Pipe) Start(objs ...interface{}) {
 	var obj interface{}
 	if len(objs) > 0 {
