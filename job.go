@@ -5,7 +5,7 @@ import (
 )
 
 type jobs struct {
-	m    *sync.Mutex
+	m    *sync.RWMutex
 	list []Job
 }
 
@@ -26,8 +26,8 @@ func (js *jobs) pop() Job {
 }
 
 func (js *jobs) len() int {
-	js.m.Lock()
-	defer js.m.Unlock()
+	js.m.RLock()
+	defer js.m.RUnlock()
 	return len(js.list)
 }
 
