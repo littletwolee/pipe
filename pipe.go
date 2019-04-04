@@ -43,7 +43,7 @@ func (p *Pipe) Start(objs ...interface{}) {
 			case j := <-p.jobCH:
 				p.pipCH <- true
 				go func(j Job, p *pip) {
-					j.CallBack(obj, j.Do)
+					j.CallBack(j.Do(obj))
 					<-p.pipCH
 				}(j, p)
 			case <-p.stopCH:

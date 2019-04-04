@@ -4,25 +4,33 @@ import (
 	"sync"
 )
 
+var max = 1000
+
 type jobs struct {
 	m    *sync.RWMutex
+	n    int
 	list []Job
 }
 
 type Job interface {
 	Do(obj interface{}) error
-	CallBack(interface{}, func(obj interface{}) error)
+	CallBack(err error)
 }
 
 func (js *jobs) pop() Job {
 	js.m.Lock()
 	defer js.m.Unlock()
 	var job Job
-	if len(js.list) > 0 {
-		job = js.list[0]
-		js.list = js.list[1:]
+	if len(js.list) > js.n {
+		job = js.list[js.n]
+		js.n++
+		if js.n >= max {
+			js.list = js.list[js.n:]
+			js.n = 0
+		}
+		return job
 	}
-	return job
+	return nil
 }
 
 func (js *jobs) len() int {
