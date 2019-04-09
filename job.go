@@ -36,7 +36,7 @@ func (js *jobs) pop() Job {
 func (js *jobs) len() int {
 	js.m.RLock()
 	defer js.m.RUnlock()
-	return len(js.list)
+	return len(js.list) - js.n
 }
 
 func (js *jobs) clean() {
