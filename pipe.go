@@ -25,7 +25,7 @@ func (p *Pipe) AddJobs(jobs ...Job) {
 }
 
 func (p *Pipe) Len() int {
-	return p.jobs.len()
+	return p.jobs.len() - p.jobs.n
 }
 
 func (p *Pipe) Clean() {
