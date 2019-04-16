@@ -2,7 +2,6 @@ package pipe
 
 import (
 	"fmt"
-	_ "net/http/pprof"
 	"testing"
 	"time"
 )
