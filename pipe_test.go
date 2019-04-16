@@ -2,20 +2,42 @@ package pipe
 
 import (
 	"fmt"
+	_ "net/http/pprof"
 	"testing"
 	"time"
 )
 
 func Test_WorkShop(t *testing.T) {
-	num := 200
+	num := 3
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 	chNum := 1
 	pip := NewPipe(chNum)
 	para := &para{sex: "male"}
 	go pip.Start(para)
+	// fmt.Println("start")
+	// time.Sleep(1 * time.Minute)
+	// pip.Close()
+	// fmt.Println("close")
+	// time.Sleep(1 * time.Minute)
 	for index := 0; index < num; index++ {
+		//fmt.Println(index)
 		pip.AddJobs(newTestJob(index))
 		//time.Sleep(1 * time.Second)
 	}
+	pip.Wait()
+	// pip.Close()
+	// time.Sleep(10 * time.Second)
+	// fmt.Println("a")
+	// pip = NewPipe(chNum)
+	// fmt.Println("b")
+	// go pip.Start(para)
+	// fmt.Println("c")
+	// for index := 0; index < num; index++ {
+	// 	pip.AddJobs(newTestJob(index))
+	// 	//time.Sleep(1 * time.Second)
+	// }
 	// fmt.Printf("completed add %d\n", num/2)
 	// time.Sleep(1 * time.Minute)
 	// for index := num/2 - 1; index < num; index++ {
@@ -49,7 +71,7 @@ func (t *testJob) Do(obj interface{}) error {
 	// 	return nil
 	// }
 	// return fmt.Errorf("error %d", t.id)
-	fmt.Println(t.id)
+	fmt.Printf("aaa:%d\n", t.id)
 	return nil
 }
 func (t *testJob) CallBack(err error) {

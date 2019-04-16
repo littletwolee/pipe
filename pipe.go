@@ -2,12 +2,14 @@ package pipe
 
 import (
 	"sync"
+	"time"
 )
 
 type Pipe struct {
 	pip  *pip
 	stop chan bool
 	jobs *jobs
+	wg   *sync.WaitGroup
 }
 
 func NewPipe(chNum int) *Pipe {
@@ -17,19 +19,31 @@ func NewPipe(chNum int) *Pipe {
 		jobs: &jobs{
 			m: new(sync.RWMutex),
 		},
+		wg: new(sync.WaitGroup),
 	}
 }
 
 func (p *Pipe) AddJobs(jobs ...Job) {
+	p.wg.Add(len(jobs))
 	p.jobs.push(jobs...)
 }
 
 func (p *Pipe) Len() int {
-	return p.jobs.len() - p.jobs.n
+	return p.jobs.len()
 }
 
 func (p *Pipe) Clean() {
 	p.jobs.clean()
+}
+func (p *Pipe) cleanCache() {
+	for {
+		p.jobs.cleanCache()
+		time.Sleep(1 * time.Minute)
+	}
+}
+func (p *Pipe) Wait() {
+	time.Sleep(3 * time.Second)
+	p.wg.Wait()
 }
 
 func (p *Pipe) Start(objs ...interface{}) {
@@ -37,22 +51,23 @@ func (p *Pipe) Start(objs ...interface{}) {
 	if len(objs) > 0 {
 		obj = objs[0]
 	}
-	go func(p *pip, obj interface{}) {
+	go p.cleanCache()
+	go func(p *Pipe, obj interface{}) {
 		for {
 			select {
-			case j := <-p.jobCH:
-				p.pipCH <- true
-				go func(j Job, p *pip) {
+			case j := <-p.pip.jobCH:
+				p.pip.pipCH <- true
+				go func(j Job, p *Pipe) {
 					j.CallBack(j.Do(obj))
-					<-p.pipCH
+					p.wg.Done()
+					<-p.pip.pipCH
 				}(j, p)
-			case <-p.stopCH:
-				p.close()
+			case <-p.pip.stopCH:
+				p.pip.close()
 				return
-			default:
 			}
 		}
-	}(p.pip, obj)
+	}(p, obj)
 	for {
 		select {
 		case <-p.stop:

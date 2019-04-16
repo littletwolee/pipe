@@ -17,6 +17,13 @@ type Job interface {
 	CallBack(err error)
 }
 
+func (js *jobs) cleanCache() {
+	js.m.Lock()
+	defer js.m.Unlock()
+	js.list = js.list[js.n:]
+	js.n = 0
+}
+
 func (js *jobs) pop() Job {
 	js.m.Lock()
 	defer js.m.Unlock()
@@ -24,13 +31,8 @@ func (js *jobs) pop() Job {
 	if len(js.list) > js.n {
 		job = js.list[js.n]
 		js.n++
-		if js.n >= max {
-			js.list = js.list[js.n:]
-			js.n = 0
-		}
-		return job
 	}
-	return nil
+	return job
 }
 
 func (js *jobs) len() int {
