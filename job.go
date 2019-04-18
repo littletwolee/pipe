@@ -1,6 +1,7 @@
 package pipe
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -9,7 +10,16 @@ var max = 1000
 type jobs struct {
 	m    *sync.RWMutex
 	n    int
-	list []Job
+	list *list
+}
+
+type list []Job
+
+func (l *list) v() []Job {
+	return *l
+}
+func (l *list) len() int {
+	return len(l.v())
 }
 
 type Job interface {
@@ -20,37 +30,43 @@ type Job interface {
 func (js *jobs) cleanCache() {
 	js.m.Lock()
 	defer js.m.Unlock()
-	js.list = js.list[js.n:]
+	defer func(js *jobs) {
+		if r := recover(); r != nil {
+			fmt.Printf("error: %s, n: %d, len: %d\n", r, js.n, len(js.list.v()))
+		}
+	}(js)
+	if js.list.len() >= js.n {
+		*js.list = js.list.v()[js.n:]
+	}
 	js.n = 0
 }
 
 func (js *jobs) pop() Job {
 	js.m.Lock()
 	defer js.m.Unlock()
-	var job Job
-	if len(js.list) > js.n {
-		job = js.list[js.n]
+	if js.list.len() > js.n {
 		js.n++
+		return js.list.v()[js.n-1]
 	}
-	return job
+	return nil
 }
 
 func (js *jobs) len() int {
 	js.m.RLock()
 	defer js.m.RUnlock()
-	return len(js.list) - js.n
+	return js.list.len() - js.n
 }
 
 func (js *jobs) clean() {
 	js.m.Lock()
 	defer js.m.Unlock()
-	js.list = []Job{}
+	js.list = new(list)
 }
 
 func (js *jobs) push(jobs ...Job) {
 	js.m.Lock()
 	defer js.m.Unlock()
-	js.list = append(js.list, jobs...)
+	*js.list = append(*js.list, jobs...)
 }
 
 type e int

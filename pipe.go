@@ -6,18 +6,20 @@ import (
 )
 
 type Pipe struct {
-	pip  *pip
-	stop chan bool
-	jobs *jobs
-	wg   *sync.WaitGroup
+	pip             *pip
+	stop, cleanStop chan bool
+	jobs            *jobs
+	wg              *sync.WaitGroup
 }
 
 func NewPipe(chNum int) *Pipe {
 	return &Pipe{
-		pip:  newPip(chNum),
-		stop: make(chan bool),
+		pip:       newPip(chNum),
+		stop:      make(chan bool),
+		cleanStop: make(chan bool),
 		jobs: &jobs{
-			m: new(sync.RWMutex),
+			m:    new(sync.RWMutex),
+			list: new(list),
 		},
 		wg: new(sync.WaitGroup),
 	}
@@ -37,8 +39,13 @@ func (p *Pipe) Clean() {
 }
 func (p *Pipe) cleanCache() {
 	for {
-		p.jobs.cleanCache()
-		time.Sleep(1 * time.Minute)
+		select {
+		case <-p.cleanStop:
+			break
+		default:
+			p.jobs.cleanCache()
+			time.Sleep(1 * time.Minute)
+		}
 	}
 }
 func (p *Pipe) Wait() {
@@ -84,6 +91,7 @@ func (p *Pipe) Start(objs ...interface{}) {
 
 func (p *Pipe) Close() {
 	p.jobs.clean()
+	go func() { p.cleanStop <- true }()
 	p.stop <- true
 	p.pip.stopCH <- true
 	close(p.stop)

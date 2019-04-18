@@ -8,45 +8,23 @@ import (
 
 func Test_WorkShop(t *testing.T) {
 	num := 3
-	// go func() {
-	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
-	// }()
 	chNum := 1
 	pip := NewPipe(chNum)
-	para := &para{sex: "male"}
-	go pip.Start(para)
-	// fmt.Println("start")
-	// time.Sleep(1 * time.Minute)
-	// pip.Close()
-	// fmt.Println("close")
-	// time.Sleep(1 * time.Minute)
+	go pip.Start()
 	for index := 0; index < num; index++ {
-		//fmt.Println(index)
 		pip.AddJobs(newTestJob(index))
-		//time.Sleep(1 * time.Second)
 	}
 	pip.Wait()
-	// pip.Close()
-	// time.Sleep(10 * time.Second)
-	// fmt.Println("a")
-	// pip = NewPipe(chNum)
-	// fmt.Println("b")
-	// go pip.Start(para)
-	// fmt.Println("c")
-	// for index := 0; index < num; index++ {
-	// 	pip.AddJobs(newTestJob(index))
-	// 	//time.Sleep(1 * time.Second)
-	// }
-	// fmt.Printf("completed add %d\n", num/2)
-	// time.Sleep(1 * time.Minute)
-	// for index := num/2 - 1; index < num; index++ {
-	// 	pip.AddJobs(newTestJob(index))
-	// }
-	time.Sleep(10 * time.Hour)
 	pip.Close()
-	fmt.Printf("Pipe close success\n")
-	for {
+	time.Sleep(2 * time.Minute)
+
+	pip = NewPipe(chNum)
+	go pip.Start()
+	for index := 0; index < num; index++ {
+		pip.AddJobs(newTestJob(index))
 	}
+	pip.Wait()
+	pip.Close()
 }
 
 type para struct {
