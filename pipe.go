@@ -18,8 +18,7 @@ func NewPipe(chNum int) *Pipe {
 		stop:      make(chan bool),
 		cleanStop: make(chan bool),
 		jobs: &jobs{
-			m:    new(sync.RWMutex),
-			list: new(list),
+			m: new(sync.RWMutex),
 		},
 		wg: new(sync.WaitGroup),
 	}

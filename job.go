@@ -10,16 +10,13 @@ var max = 1000
 type jobs struct {
 	m    *sync.RWMutex
 	n    int
-	list *list
+	list list
 }
 
 type list []Job
 
-func (l *list) v() []Job {
-	return *l
-}
-func (l *list) len() int {
-	return len(l.v())
+func (l list) len() int {
+	return len(l)
 }
 
 type Job interface {
@@ -32,11 +29,11 @@ func (js *jobs) cleanCache() {
 	defer js.m.Unlock()
 	defer func(js *jobs) {
 		if r := recover(); r != nil {
-			fmt.Printf("error: %s, n: %d, len: %d\n", r, js.n, len(js.list.v()))
+			fmt.Printf("error: %s, n: %d, len: %d\n", r, js.n, len(js.list))
 		}
 	}(js)
 	if js.list.len() >= js.n {
-		*js.list = js.list.v()[js.n:]
+		js.list = js.list[js.n:]
 	}
 	js.n = 0
 }
@@ -46,7 +43,7 @@ func (js *jobs) pop() Job {
 	defer js.m.Unlock()
 	if js.list.len() > js.n {
 		js.n++
-		return js.list.v()[js.n-1]
+		return js.list[js.n-1]
 	}
 	return nil
 }
@@ -60,13 +57,13 @@ func (js *jobs) len() int {
 func (js *jobs) clean() {
 	js.m.Lock()
 	defer js.m.Unlock()
-	js.list = new(list)
+	js.list = []Job{}
 }
 
 func (js *jobs) push(jobs ...Job) {
 	js.m.Lock()
 	defer js.m.Unlock()
-	*js.list = append(*js.list, jobs...)
+	js.list = append(js.list, jobs...)
 }
 
 type e int
