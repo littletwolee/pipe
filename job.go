@@ -1,70 +1,109 @@
 package pipe
 
-import (
-	"fmt"
-	"sync"
+const (
+	_DEFAULT_BUFFER_MAX = int64(1024 * 100)
 )
 
-var max = 1000
+type ringBuffer []Job
 
-type jobs struct {
-	m    *sync.RWMutex
-	n    int
-	list list
+func newBuffer(max int64) *ringBuffer {
+	rb := make(ringBuffer, pipeMax(max))
+	return &rb
 }
 
-type list []Job
-
-func (l list) len() int {
-	return len(l)
+func pipeMax(pipeMax int64) int64 {
+	if pipeMax > 0 && pipeMax < _DEFAULT_BUFFER_MAX {
+		return pipeMax
+	}
+	return _DEFAULT_BUFFER_MAX
 }
+
+// type jobs struct {
+// 	bufferMax, wBarrier, rBarrier int64
+// 	list                          list
+// }
+
+// func newJobs(bufferMax int64) *jobs {
+// 	return &jobs{
+// 		wBarrier:  1,
+// 		bufferMax: bufferMax,
+// 		list:      make([]Job, bufferMax),
+// 	}
+// }
+
+// type list []Job
+
+// func (j *jobs) len() int64 {
+// 	w := atomic.LoadInt64(&j.wBarrier)
+// 	r := atomic.LoadInt64(&j.rBarrier) + 1
+// 	if !j.isCover() && r < w {
+// 		return w - r
+// 	} else if j.isCover() && r > w {
+// 		return j.bufferMax - r + w
+// 	}
+// 	return 0
+// }
 
 type Job interface {
-	Do(obj interface{}) error
+	Do() error
 	CallBack(err error)
+	//NotNil() bool
 }
 
-func (js *jobs) cleanCache() {
-	js.m.Lock()
-	defer js.m.Unlock()
-	defer func(js *jobs) {
-		if r := recover(); r != nil {
-			fmt.Printf("error: %s, n: %d, len: %d\n", r, js.n, len(js.list))
-		}
-	}(js)
-	if js.list.len() >= js.n {
-		js.list = js.list[js.n:]
-	}
-	js.n = 0
-}
+var _nil Job = (Job)(nil)
 
-func (js *jobs) pop() Job {
-	js.m.Lock()
-	defer js.m.Unlock()
-	if js.list.len() > js.n {
-		js.n++
-		return js.list[js.n-1]
-	}
-	return nil
-}
+type nilJob struct{}
 
-func (js *jobs) len() int {
-	js.m.RLock()
-	defer js.m.RUnlock()
-	return js.list.len() - js.n
-}
+func (n *nilJob) Do() error          { return nil }
+func (n *nilJob) CallBack(err error) {}
 
-func (js *jobs) clean() {
-	js.m.Lock()
-	defer js.m.Unlock()
-	js.list = []Job{}
-}
+// func (js *jobs) push(jobs ...Job) {
+// 	for _, job := range jobs {
+// 		wCurrent := atomic.LoadInt64(&js.wBarrier)
+// 		rCurrent := atomic.LoadInt64(&js.rBarrier)
+// 		for {
+// 			if js.wEffective(wCurrent, rCurrent) {
+// 				js.list[wCurrent] = job
+// 				js.swap(wCurrent+1, &js.wBarrier)
+// 				break
+// 			}
+// 			runtime.Gosched()
+// 			time.Sleep(time.Second)
+// 		}
+// 	}
+// }
 
-func (js *jobs) push(jobs ...Job) {
-	js.m.Lock()
-	defer js.m.Unlock()
-	js.list = append(js.list, jobs...)
-}
+// func (js *jobs) load(w *worker, i int64) Job {
+// 	wb := atomic.LoadInt64(&js.wBarrier)
+// 	for {
+// 		if !js.rEffective(wb, i) {
+// 			time.Sleep(time.Second)
+// 			runtime.Gosched()
+// 		}
+// 		w.chunk = i
+// 		js.swap(i, &js.rBarrier)
+// 		break
+// 	}
+// 	return js.list[i]
+// }
+
+// func (js *jobs) swap(i int64, p *int64) {
+// 	if i > js.bufferMax {
+// 		atomic.SwapInt64(p, 0)
+// 		return
+// 	}
+// 	atomic.SwapInt64(p, i)
+// }
+
+// func (js *jobs) isCover() bool {
+// 	return atomic.LoadInt64(&js.wBarrier) < atomic.LoadInt64(&js.rBarrier)
+// }
+// func (js *jobs) rEffective(w, r int64) bool {
+// 	return r <= w || (w < r && r < js.bufferMax)
+// }
+// func (js *jobs) wEffective(w, r int64) bool {
+// 	return (r < w && w < js.bufferMax) || w < r
+// }
 
 type e int
 

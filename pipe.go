@@ -1,117 +1,102 @@
 package pipe
 
 import (
-	"sync"
-	"time"
+	"fmt"
+	"runtime"
 )
 
+//Pipe .
 type Pipe struct {
-	pip             *pip
-	stop, cleanStop chan bool
-	jobs            *jobs
-	wg              *sync.WaitGroup
+	capacity, chunk int64
+	cursors         cursors
+	ringBuffer      *ringBuffer
+	swich           *bool
+	current         *barrier
 }
 
-func NewPipe(chNum int) *Pipe {
-	return &Pipe{
-		pip:       newPip(chNum),
-		stop:      make(chan bool),
-		cleanStop: make(chan bool),
-		jobs: &jobs{
-			m: new(sync.RWMutex),
-		},
-		wg: new(sync.WaitGroup),
+//NewPipe create a new Pipe
+func NewPipe(rn, capacity int64) (*Pipe, error) {
+	if !checkEven(int64(rn)) && rn != 1 {
+		return nil, fmt.Errorf(_ERROR_EVEN, "reader number")
 	}
+	if !checkEven(capacity) {
+		return nil, fmt.Errorf(_ERROR_EVEN, "buffer max")
+	}
+	p := &Pipe{
+		capacity:   capacity,
+		current:    newBarrier(),
+		chunk:      rn,
+		ringBuffer: newBuffer(capacity),
+		swich:      &_STOP,
+	}
+	p.cursors = newCursors(_DEFAULT_ONE, rn, capacity, p.ringBuffer, p.swich)
+	return p, nil
 }
 
-func (p *Pipe) AddJobs(jobs ...Job) {
-	p.wg.Add(len(jobs))
-	p.jobs.push(jobs...)
+//Start pipe
+func (p *Pipe) Start() {
+	*p.swich = _START
+	p.cursors.start()
 }
 
-func (p *Pipe) Len() int {
-	return p.jobs.len()
+//Stop pipe
+func (p *Pipe) Stop() {
+	*p.swich = _STOP
 }
 
-func (p *Pipe) Clean() {
-	p.jobs.clean()
-}
-func (p *Pipe) cleanCache() {
+//Write job
+func (p *Pipe) Write(j Job) {
+	i := -1
 	for {
-		select {
-		case <-p.cleanStop:
-			break
-		default:
-			p.jobs.cleanCache()
-			time.Sleep(1 * time.Minute)
-		}
-	}
-}
-func (p *Pipe) Wait() {
-	time.Sleep(3 * time.Second)
-	p.wg.Wait()
-}
+		i++
+		// if !*p.swich {
+		// 	break
+		// }
+		old := p.current.load()
+		c := p.cursors[old%p.chunk]
 
-func (p *Pipe) Start(objs ...interface{}) {
-	var obj interface{}
-	if len(objs) > 0 {
-		obj = objs[0]
-	}
-	go p.cleanCache()
-	go func(p *Pipe, obj interface{}) {
-		for {
-			select {
-			case j := <-p.pip.jobCH:
-				p.pip.pipCH <- true
-				go func(j Job, p *Pipe) {
-					j.CallBack(j.Do(obj))
-					p.wg.Done()
-					<-p.pip.pipCH
-				}(j, p)
-			case <-p.pip.stopCH:
-				p.pip.close()
-				return
-			}
-		}
-	}(p, obj)
-	for {
-		select {
-		case <-p.stop:
+		if c.write(j) {
+			p.current.add()
 			return
-		default:
-			j := p.jobs.pop()
-			if j == nil {
-				continue
-			}
-			p.pip.jobCH <- j
 		}
+		fmt.Printf("o:%d,r:%d,w:%d\n", old, c.r.barrier.load(), c.w.barrier.load())
+		if i > 4 {
+			panic(111)
+		}
+
+		runtime.Gosched()
 	}
 }
 
-func (p *Pipe) Close() {
-	p.jobs.clean()
-	go func() { p.cleanStop <- true }()
-	p.stop <- true
-	p.pip.stopCH <- true
-	close(p.stop)
-}
+// func (p *Pipe) Push(jobs ...Job) {
+// 	p.js.push(jobs...)
+// }
 
-type pip struct {
-	jobCH  chan Job
-	pipCH  chan bool
-	stopCH chan bool
-}
+// func (p *Pipe) Len() int64 {
+// 	return p.js.len()
+// }
 
-func newPip(chNum int) *pip {
-	return &pip{
-		jobCH:  make(chan Job, chNum),
-		pipCH:  make(chan bool, chNum),
-		stopCH: make(chan bool),
-	}
-}
+// func (p *Pipe) Start(objs ...interface{}) {
+// 	for {
+// 		select {
+// 		case w := <-p.workers.ch:
+// 			job := w.load(p.js)
+// 			if job == nil {
+// 				go func(w *worker, p *Pipe) {
+// 					runtime.Gosched()
+// 					time.Sleep(time.Second)
+// 					p.workers.ch <- w
+// 				}(w, p)
+// 				continue
+// 			}
+// 			job.CallBack(job.Do(objs))
+// 			p.workers.ch <- w
+// 		case <-p.stop:
+// 			break
+// 		}
+// 	}
+// }
 
-func (p *pip) close() {
-	close(p.jobCH)
-	close(p.pipCH)
-	close(p.stopCH)
-}
+// func (p *Pipe) Stop() {
+// 	p.stop <- true
+// }
